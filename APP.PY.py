@@ -1,6 +1,43 @@
 import streamlit as st
 import pandas as pd
 
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "role" not in st.session_state:
+    st.session_state.role = None
+
+if not st.session_state.logged_in:
+
+    st.title("Login")
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+
+        if username == "admin" and password == "1234567":
+            st.session_state.logged_in = True
+            st.session_state.role = "admin"
+            st.success("Logged in as Admin")
+            st.rerun()
+
+        elif username == "teacher" and password == "1234":
+            st.session_state.logged_in = True
+            st.session_state.role = "teacher"
+            st.success("Logged in as Teacher")
+            st.rerun()
+
+        else:
+            st.error("Invalid credentials")
+
+    st.stop()
+
+if st.session_state.role == "admin":
+    if st.button("Generate Timetable"):
+        ...
+
+
 # ==================================================
 # ---------------- APP SETUP -----------------------
 # ==================================================
