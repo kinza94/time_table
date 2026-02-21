@@ -517,7 +517,50 @@ if st.session_state.teachers and st.session_state.subject_config:
 
     st.write("### Current Teacher Assignments")
     st.write(st.session_state.teacher_assignment)
+    st.subheader("❌ Remove Teacher Assignment")
 
+    if st.session_state.teacher_assignment:
+
+        remove_teacher = st.selectbox(
+            "Select Teacher",
+            list(st.session_state.teacher_assignment.keys()),
+            key="remove_assign_teacher"
+        )
+
+        sections_for_teacher = list(
+            st.session_state.teacher_assignment[remove_teacher].keys()
+        )
+
+        if sections_for_teacher:
+
+            remove_section = st.selectbox(
+                "Select Section",
+                sections_for_teacher,
+                key="remove_assign_section"
+            )
+
+            subjects_for_teacher = st.session_state.teacher_assignment[remove_teacher][remove_section]
+
+            if subjects_for_teacher:
+
+                remove_subject = st.selectbox(
+                    "Select Subject",
+                    subjects_for_teacher,
+                    key="remove_assign_subject"
+                )
+
+                if st.button("Delete Assignment"):
+
+                    st.session_state.teacher_assignment[remove_teacher][remove_section].remove(remove_subject)
+
+                    # Clean empty structures
+                    if not st.session_state.teacher_assignment[remove_teacher][remove_section]:
+                        del st.session_state.teacher_assignment[remove_teacher][remove_section]
+
+                    if not st.session_state.teacher_assignment[remove_teacher]:
+                        del st.session_state.teacher_assignment[remove_teacher]
+
+                    st.success("Assignment Removed Successfully")
 
 # ==================================================
 # ---------------- GENERATE ------------------------
