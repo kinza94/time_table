@@ -742,9 +742,9 @@ if menu == "Class View":
             row = []
             for p in ALL_PERIODS:
                 if p in get_periods(day):
-                    subject = st.session_state.timetable.get(section, {}) \
+                    subject = st.session_state.timetable.get(sec, {}) \
                         .get(day, {}) \
-                        .get(period, {}) \
+                        .get(p, {}) \
                         .get("subject", "")
                     teacher = st.session_state.timetable[sec][day][p]["teacher"]
                     value = f"{subject} | {teacher}" if subject else ""
