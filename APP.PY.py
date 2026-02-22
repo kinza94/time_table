@@ -49,8 +49,8 @@ if not st.session_state.logged_in:
     st.stop()
 
 if st.session_state.role == "admin":
-    if st.button("Generate Timetable"):
-        ...
+    if st.button("Generate Timetable", key="admin_generate"):
+        pass
 
 
 # ==================================================
@@ -146,7 +146,6 @@ def load_all_data():
         st.session_state.subject_config = data.get("subject_config", {})
         st.session_state.teacher_assignment = data.get("teacher_assignment", {})
         st.session_state.timetable = data.get("timetable", {})
-        load_all_data()
 
 def validate_subject_weekly(section):
     issues = []
@@ -681,6 +680,26 @@ if menu == "Generate":
 
         st.success("Timetable Generated with Class Teacher P1 Priority")
         save_all_data()
+        # ===============================
+        # RUN ALL VALIDATIONS
+        # ===============================
+
+        for sec in st.session_state.timetable:
+            subject_issues = validate_subject_weekly(sec)
+            for issue in subject_issues:
+                st.error(issue)
+
+        clash_issues = validate_teacher_clashes()
+        for issue in clash_issues:
+            st.error(issue)
+
+        class_teacher_issues = validate_class_teacher_presence()
+        for issue in class_teacher_issues:
+            st.warning(issue)
+
+        max_load_issues = validate_teacher_max_load()
+        for issue in max_load_issues:
+            st.error(issue)
 
 
 
@@ -701,7 +720,10 @@ if menu == "Class View":
             row = []
             for p in ALL_PERIODS:
                 if p in get_periods(day):
-                    subject = st.session_state.timetable[sec][day][p]["subject"]
+                    subject = st.session_state.timetable.get(section, {}) \
+                        .get(day, {}) \
+                        .get(period, {}) \
+                        .get("subject", "")
                     teacher = st.session_state.timetable[sec][day][p]["teacher"]
                     value = f"{subject} | {teacher}" if subject else ""
                     row.append(value)
@@ -760,43 +782,6 @@ def validate_teacher_max_load(max_periods=25):
             issues.append(f"{teacher} exceeds {max_periods} periods (currently {count})")
 
     return issues
-
-    # ✅ SUBJECT WEEKLY CHECK
-    subject_issues = validate_subject_weekly(sec)
-    for issue in subject_issues:
-        st.error(issue)
-
-    # ✅ TEACHER CLASH CHECK
-    clash_issues = validate_teacher_clashes()
-
-    for clash in clash_issues:
-
-        st.error(clash)
-
-        # Extract info from string
-        parts = clash.split(" ")
-        teacher = parts[1]
-        day = parts[-2]
-        period = parts[-1]
-
-        st.warning("Checking suggestions...")
-
-        free_teachers = get_free_teachers(day, period)
-        if free_teachers:
-            st.info(f"Free teachers at {day} {period}: {free_teachers}")
-
-        safe_slots = suggest_safe_slots(sec, teacher)
-        if safe_slots:
-            st.info(f"Safe slots for {teacher}: {safe_slots}")
-
-    # ✅ CLASS TEACHER PRESENCE CHECK
-    class_teacher_issues = validate_class_teacher_presence()
-    for issue in class_teacher_issues:
-        st.warning(issue)
-    # max 25 period
-    max_load_issues = validate_teacher_max_load()
-    for issue in max_load_issues:
-        st.error(issue)
 
 
 
