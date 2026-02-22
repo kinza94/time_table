@@ -1,5 +1,20 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
+import json
+
+conn = sqlite3.connect("school.db", check_same_thread=False)
+c = conn.cursor()
+
+# Create table
+c.execute("""
+CREATE TABLE IF NOT EXISTS app_data (
+    id INTEGER PRIMARY KEY,
+    data TEXT
+)
+""")
+
+conn.commit()
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -37,6 +52,39 @@ if st.session_state.role == "admin":
     if st.button("Generate Timetable"):
         ...
 
+def save_all_data():
+
+    data = {
+        "teachers": st.session_state.teachers,
+        "sections": st.session_state.sections,
+        "class_teachers": st.session_state.class_teachers,
+        "subject_config": st.session_state.subject_config,
+        "teacher_assignment": st.session_state.teacher_assignment,
+        "timetable": st.session_state.timetable,
+        "users": st.session_state.users,
+        "view_permission": st.session_state.view_permission
+    }
+
+    c.execute("DELETE FROM app_data")
+    c.execute("INSERT INTO app_data (data) VALUES (?)",
+              (json.dumps(data),))
+    conn.commit()
+
+    def load_all_data():
+        c.execute("SELECT data FROM app_data LIMIT 1")
+        row = c.fetchone()
+
+        if row:
+            data = json.loads(row[0])
+
+            st.session_state.teachers = data.get("teachers", {})
+            st.session_state.sections = data.get("sections", {})
+            st.session_state.class_teachers = data.get("class_teachers", {})
+            st.session_state.subject_config = data.get("subject_config", {})
+            st.session_state.teacher_assignment = data.get("teacher_assignment", {})
+            st.session_state.timetable = data.get("timetable", {})
+            st.session_state.users = data.get("users", {})
+            st.session_state.view_permission = data.get("view_permission", False)
 
 # ==================================================
 # ---------------- APP SETUP -----------------------
@@ -177,6 +225,7 @@ def validate_class_teacher_presence():
             )
 
     return issues
+load_all_data()
 #==================================================
 # AI DETECTION ENGINE
 #============================================
@@ -289,6 +338,7 @@ def assign_class_teacher_priority():
 
                 # Reduce required count
                 st.session_state.subject_config[section][subject] -= 1
+save_all_data()
 
 # --------------------------------------------
 # BASIC AUTO FILL ENGINE
@@ -386,7 +436,7 @@ def suggest_safe_slots(section, teacher):
 
     return safe[:5]
 
-
+save_all_data()
 
 # ==================================================
 # ---------------- SIDEBAR -------------------------
@@ -402,6 +452,7 @@ menu = st.sidebar.selectbox(
 if menu == "Dashboard":
     st.subheader("CREATE YOUR TIME TABLE👋")
     st.write("Use sidebar to configure and generate timetable.")
+    save_all_data()
 
 # ==================================================
 # ---------------- CONFIGURATION -------------------
@@ -449,6 +500,7 @@ if menu == "Configuration":
             if st.button("Delete Teacher"):
                 st.session_state.teachers.pop(remove_teacher, None)
                 st.success("Teacher Removed")
+                save_all_data()
 
     st.subheader("📌 Assign Class Teacher")
 
@@ -476,6 +528,7 @@ if menu == "Configuration":
         if st.button("Delete Class Teacher"):
             st.session_state.class_teachers.pop(remove_class_teacher, None)
             st.success("Class Teacher Removed")
+            save_all_data()
 
     st.subheader("📚 Configure Subjects for Section")
 
@@ -511,6 +564,7 @@ if menu == "Configuration":
             if st.button("Delete Subject"):
                 st.session_state.subject_config[selected_section].pop(remove_subject, None)
                 st.success("Subject Removed")
+                save_all_data()
 
 st.subheader("👩‍🏫 Assign Teacher to Section & Subject")
 
@@ -551,6 +605,7 @@ if st.session_state.teachers and st.session_state.subject_config:
                 st.session_state.teacher_assignment[assign_teacher][assign_section].append(assign_subject)
 
             st.success("Teacher Assigned Successfully")
+            save_all_data()
 
     st.write("### Current Teacher Assignments")
     st.write(st.session_state.teacher_assignment)
@@ -598,6 +653,7 @@ if st.session_state.teachers and st.session_state.subject_config:
                         del st.session_state.teacher_assignment[remove_teacher]
 
                     st.success("Assignment Removed Successfully")
+                    save_all_data()
 
 # ==================================================
 # ---------------- GENERATE ------------------------
@@ -621,6 +677,7 @@ if menu == "Generate":
         st.session_state.subject_config = original_config
 
         st.success("Timetable Generated with Class Teacher P1 Priority")
+        save_all_data()
 
 
 
@@ -652,6 +709,7 @@ if menu == "Class View":
         df = pd.DataFrame(df_data, index=ALL_PERIODS)
 
         edited_df = st.data_editor(df, use_container_width=True)
+        save_all_data()
 #===================================
 #------- max 25 periods per week----
 #===================================
@@ -695,6 +753,7 @@ if st.button("Save Manual Changes"):
                 else:
                     st.session_state.timetable[sec][day][period]["subject"] = ""
                     st.session_state.timetable[sec][day][period]["teacher"] = ""
+                    save_all_data()
 
     st.success("Manual changes saved")
 
