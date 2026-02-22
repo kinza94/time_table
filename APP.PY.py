@@ -662,7 +662,7 @@ if st.session_state.teachers and st.session_state.subject_config:
 # ==================================================
 if menu == "Generate":
 
-    if st.button("Generate Timetable"):
+    if st.button("Generate Timetable", key="generate_main"):
 
         # Make deep copy of original subject config
         original_config = {
