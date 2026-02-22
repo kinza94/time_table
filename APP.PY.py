@@ -224,7 +224,9 @@ def validate_class_teacher_presence():
             )
 
     return issues
-load_all_data()
+if "data_loaded" not in st.session_state:
+    load_all_data()
+    st.session_state.data_loaded = True
 #==================================================
 # AI DETECTION ENGINE
 #============================================
