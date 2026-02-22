@@ -126,11 +126,21 @@ def save_all_data():
         "timetable": st.session_state.get("timetable", {}),
     }
 
-    c.execute("DELETE FROM app_data")
-    c.execute("INSERT INTO app_data (data) VALUES (?)",
-              (json.dumps(data),))
-    conn.commit()
+    c.execute("SELECT COUNT(*) FROM app_data")
+    count = c.fetchone()[0]
 
+    if count == 0:
+        c.execute(
+            "INSERT INTO app_data (id, data) VALUES (1, ?)",
+            (json.dumps(data),)
+        )
+    else:
+        c.execute(
+            "UPDATE app_data SET data=? WHERE id=1",
+            (json.dumps(data),)
+        )
+
+    conn.commit()
 
 def load_all_data():
 
@@ -487,8 +497,10 @@ if menu == "Configuration":
         st.subheader("➕ Add Section")
         sec = st.text_input("Section Name (e.g., 6A)")
         if st.button("Add Section"):
-            st.session_state.sections[sec] = {}
-            st.success("Section Added")
+            if sec:
+                st.session_state.sections[sec] = {}
+                save_all_data()
+                st.success("Section Added")
 
         st.write("Sections:", list(st.session_state.sections.keys()))
         if st.session_state.sections:
@@ -509,8 +521,10 @@ if menu == "Configuration":
         st.subheader("➕ Add Teacher")
         teacher = st.text_input("Teacher Name")
         if st.button("Add Teacher"):
-            st.session_state.teachers[teacher] = {}
-            st.success("Teacher Added")
+            if teacher:
+                st.session_state.teachers[teacher] = {}
+                save_all_data()
+                st.success("Teacher Added")
 
         st.write("Teachers:", list(st.session_state.teachers.keys()))
         if st.session_state.teachers:
@@ -573,6 +587,7 @@ if menu == "Configuration":
                 st.session_state.subject_config[selected_section] = {}
 
             st.session_state.subject_config[selected_section][subject_name] = weekly_periods
+            save_all_data()
             st.success("Subject Added Successfully")
 
         st.write("### Subjects for this Section:")
