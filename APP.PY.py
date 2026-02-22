@@ -436,6 +436,27 @@ def suggest_safe_slots(section, teacher):
     return safe[:5]
 
 
+#===================================
+#------- max 25 periods per week----
+#===================================
+def validate_teacher_max_load(max_periods=25):
+
+    issues = []
+
+    for teacher in st.session_state.teachers:
+
+        count = 0
+
+        for sec in st.session_state.timetable:
+            for day in DAYS:
+                for period in get_periods(day):
+                    if st.session_state.timetable[sec][day][period]["teacher"] == teacher:
+                        count += 1
+
+        if count > max_periods:
+            issues.append(f"{teacher} exceeds {max_periods} periods (currently {count})")
+
+    return issues
 
 # ==================================================
 # ---------------- SIDEBAR -------------------------
@@ -657,6 +678,7 @@ if st.session_state.teachers and st.session_state.subject_config:
                     st.success("Assignment Removed Successfully")
 
 
+
 # ==================================================
 # ---------------- GENERATE ------------------------
 # ==================================================
@@ -760,31 +782,6 @@ if menu == "Class View":
 
             save_all_data()
             st.success("Manual changes saved")
-
-#===================================
-#------- max 25 periods per week----
-#===================================
-def validate_teacher_max_load(max_periods=25):
-
-    issues = []
-
-    for teacher in st.session_state.teachers:
-
-        count = 0
-
-        for sec in st.session_state.timetable:
-            for day in DAYS:
-                for period in get_periods(day):
-                    if st.session_state.timetable[sec][day][period]["teacher"] == teacher:
-                        count += 1
-
-        if count > max_periods:
-            issues.append(f"{teacher} exceeds {max_periods} periods (currently {count})")
-
-    return issues
-
-
-
 
 
 # ==================================================
