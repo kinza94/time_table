@@ -761,32 +761,6 @@ def validate_teacher_max_load(max_periods=25):
 
     return issues
 
-if st.button("Save Manual Changes"):
-
-    for day in DAYS:
-        for period in ALL_PERIODS:
-            if period in get_periods(day):
-
-                cell = edited_df.loc[period, day]
-
-                if cell:
-                    try:
-                        subject, teacher = cell.split("|")
-                        subject = subject.strip()
-                        teacher = teacher.strip()
-
-                        st.session_state.timetable[sec][day][period]["subject"] = subject
-                        st.session_state.timetable[sec][day][period]["teacher"] = teacher
-                    except:
-                        pass
-                else:
-                    st.session_state.timetable[sec][day][period]["subject"] = ""
-                    st.session_state.timetable[sec][day][period]["teacher"] = ""
-                    save_all_data()
-
-
-    st.success("Manual changes saved")
-
     # ✅ SUBJECT WEEKLY CHECK
     subject_issues = validate_subject_weekly(sec)
     for issue in subject_issues:
