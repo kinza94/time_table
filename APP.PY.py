@@ -418,6 +418,82 @@ def basic_auto_fill():
                 if not placed:
                     break
 
+def validate_no_three_consecutive():
+    issues = []
+
+    for teacher in st.session_state.teachers:
+        for day in DAYS:
+
+            periods = []
+            for period in get_periods(day):
+                assigned = False
+                for sec in st.session_state.timetable:
+                    if st.session_state.timetable[sec][day][period]["teacher"] == teacher:
+                        assigned = True
+                periods.append(1 if assigned else 0)
+
+            for i in range(len(periods)-2):
+                if periods[i] and periods[i+1] and periods[i+2]:
+                    issues.append(f"{teacher} has 3 consecutive periods on {day}")
+
+    return issues
+def validate_teacher_distribution():
+    issues = []
+
+    for teacher in st.session_state.teachers:
+        daily_load = []
+
+        for day in DAYS:
+            count = 0
+            for sec in st.session_state.timetable:
+                for period in get_periods(day):
+                    if st.session_state.timetable[sec][day][period]["teacher"] == teacher:
+                        count += 1
+            daily_load.append(count)
+
+        if max(daily_load) - min(daily_load) >= 2:
+            issues.append(f"{teacher} workload not balanced: {daily_load}")
+
+    return issues
+def validate_friday_load():
+    issues = []
+
+    for teacher in st.session_state.teachers:
+        count = 0
+        for sec in st.session_state.timetable:
+            for period in get_periods("Friday"):
+                if st.session_state.timetable[sec]["Friday"][period]["teacher"] == teacher:
+                    count += 1
+
+        if count > 5:
+            issues.append(f"{teacher} heavy Friday ({count} periods)")
+        elif count == 5:
+            issues.append(f"{teacher} Friday 5 periods (acceptable)")
+
+    return issues
+def validate_maths_consecutive():
+    issues = []
+
+    for sec in st.session_state.timetable:
+        for day in DAYS:
+
+            maths_positions = []
+
+            for period in get_periods(day):
+                subject = st.session_state.timetable[sec][day][period]["subject"]
+                if subject and "Math" in subject:
+                    maths_positions.append(period)
+
+            if len(maths_positions) == 2:
+                periods = get_periods(day)
+                idx1 = periods.index(maths_positions[0])
+                idx2 = periods.index(maths_positions[1])
+
+                if abs(idx1 - idx2) != 1:
+                    issues.append(f"{sec} Maths not consecutive on {day}")
+
+    return issues
+
 # SUGGESTION============================================
 def get_free_teachers(day, period):
 
@@ -740,7 +816,25 @@ if menu == "Generate":
         for issue in max_load_issues:
             st.error(issue)
 
+        # ===============================
+        # SOFT CONSTRAINT VALIDATIONS
+        # ===============================
 
+        consecutive_issues = validate_no_three_consecutive()
+        for issue in consecutive_issues:
+            st.warning(issue)
+
+        distribution_issues = validate_teacher_distribution()
+        for issue in distribution_issues:
+            st.warning(issue)
+
+        friday_issues = validate_friday_load()
+        for issue in friday_issues:
+            st.info(issue)
+
+        maths_issues = validate_maths_consecutive()
+        for issue in maths_issues:
+            st.info(issue)
 
 
 # ==================================================
