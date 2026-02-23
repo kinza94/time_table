@@ -37,16 +37,20 @@ if not st.session_state.logged_in:
             st.success("Logged in as Admin")
             st.rerun()
 
-        elif username == "teacher" and password == "1234":
+        elif username in st.session_state.teachers and password == "1234":
             st.session_state.logged_in = True
-            st.session_state.role = "teacher"
-            st.success("Logged in as Teacher")
+            st.session_state.role = "viewer"
+            st.success(f"Logged in as {username}")
+            st.rerun()
+
+        elif username == "head" and password == "9999":
+            st.session_state.logged_in = True
+            st.session_state.role = "viewer"
+            st.success("Logged in as Head")
             st.rerun()
 
         else:
             st.error("Invalid credentials")
-
-    st.stop()
 
 if st.session_state.role == "admin":
     if st.button("Generate Timetable", key="admin_generate"):
@@ -576,14 +580,32 @@ def validate_teacher_max_load(max_periods=25):
             issues.append(f"{teacher} exceeds {max_periods} periods (currently {count})")
 
     return issues
+#================================================
+#----------TEACHER REPLACEMENT----------------
+#================================================
+def replace_teacher_everywhere(old_teacher, new_teacher):
 
+    for section in st.session_state.timetable:
+        for day in DAYS:
+            for period in get_periods(day):
+
+                if st.session_state.timetable[section][day][period]["teacher"] == old_teacher:
+                    st.session_state.timetable[section][day][period]["teacher"] = new_teacher
+
+    save_all_data()
 # ==================================================
 # ---------------- SIDEBAR -------------------------
 # ==================================================
-menu = st.sidebar.selectbox(
-    "Navigation",
-    ["Dashboard", "Configuration", "Generate", "Class View", "Teacher View", "Analytics"]
-)
+if st.session_state.role == "admin":
+    menu = st.sidebar.selectbox(
+        "Navigation",
+        ["Dashboard", "Configuration", "Generate", "Class View", "Teacher View", "Analytics"]
+    )
+else:
+    menu = st.sidebar.selectbox(
+        "Navigation",
+        ["Class View", "Teacher View", "Analytics"]
+    )
 
 # ==================================================
 # ---------------- DASHBOARD -----------------------
@@ -801,51 +823,49 @@ if st.session_state.teachers and st.session_state.subject_config:
 
                     st.success("Assignment Removed Successfully")
 
+        # ==================================================
+        # ---------------- GENERATE ------------------------
+        # ==================================================
+        if menu == "Generate":
 
+            # 🔹 Generate Button
+            if st.button("Generate Timetable", key="generate_main"):
+                original_config = {
+                    sec: st.session_state.subject_config[sec].copy()
+                    for sec in st.session_state.subject_config
+                }
 
-# ==================================================
-# ---------------- GENERATE ------------------------
-# ==================================================
-if menu == "Generate":
+                st.session_state.timetable = create_empty_timetable()
 
-    if st.button("Generate Timetable", key="generate_main"):
+                assign_class_teacher_priority()
+                basic_auto_fill()
 
-        # Make deep copy of original subject config
-        original_config = {
-            sec: st.session_state.subject_config[sec].copy()
-            for sec in st.session_state.subject_config
-        }
+                st.session_state.subject_config = original_config
 
-        st.session_state.timetable = create_empty_timetable()
+                st.success("Timetable Generated with Class Teacher P1 Priority")
+                save_all_data()
 
-        assign_class_teacher_priority()
-        basic_auto_fill()
+            # 🔹 Replacement Section (OUTSIDE button)
+            if st.session_state.timetable:
 
-        # Restore original subject config
-        st.session_state.subject_config = original_config
+                st.subheader("🔄 Replace Teacher")
 
-        st.success("Timetable Generated with Class Teacher P1 Priority")
-        save_all_data()
-        # ===============================
-        # RUN ALL VALIDATIONS
-        # ===============================
+                old_teacher = st.selectbox(
+                    "Select Teacher to Replace",
+                    list(st.session_state.teachers.keys()),
+                    key="replace_old"
+                )
 
-        for sec in st.session_state.timetable:
-            subject_issues = validate_subject_weekly(sec)
-            for issue in subject_issues:
-                st.error(issue)
+                new_teacher = st.selectbox(
+                    "Replace With",
+                    list(st.session_state.teachers.keys()),
+                    key="replace_new"
+                )
 
-        clash_issues = validate_teacher_clashes()
-        for issue in clash_issues:
-            st.error(issue)
-
-        class_teacher_issues = validate_class_teacher_presence()
-        for issue in class_teacher_issues:
-            st.warning(issue)
-
-        max_load_issues = validate_teacher_max_load()
-        for issue in max_load_issues:
-            st.error(issue)
+                if st.button("Replace Teacher"):
+                    replace_teacher_everywhere(old_teacher, new_teacher)
+                    save_all_data()  # 🔥 IMPORTANT
+                    st.success(f"{old_teacher} replaced with {new_teacher}")
 
         # ===============================
         # SOFT CONSTRAINT VALIDATIONS
