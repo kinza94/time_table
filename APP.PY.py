@@ -800,7 +800,24 @@ if menu == "Class View":
             save_all_data()
             st.success("Manual changes saved")
 
+    # 🔎 Run validations after manual edit
 
+    for sec_check in st.session_state.timetable:
+        subject_issues = validate_subject_weekly(sec_check)
+        for issue in subject_issues:
+            st.error(issue)
+
+    clash_issues = validate_teacher_clashes()
+    for issue in clash_issues:
+        st.error(issue)
+
+    class_teacher_issues = validate_class_teacher_presence()
+    for issue in class_teacher_issues:
+        st.warning(issue)
+
+    max_load_issues = validate_teacher_max_load()
+    for issue in max_load_issues:
+        st.error(issue)
 # ==================================================
 # ---------------- TEACHER VIEW --------------------
 # ==================================================
