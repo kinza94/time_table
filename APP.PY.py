@@ -493,7 +493,38 @@ def validate_maths_consecutive():
                     issues.append(f"{sec} Maths not consecutive on {day}")
 
     return issues
+def validate_double_period_rule():
+    issues = []
 
+    for section in st.session_state.timetable:
+
+        if section not in st.session_state.subject_config:
+            continue
+
+        required_config = st.session_state.subject_config[section]
+
+        for subject, weekly_required in required_config.items():
+
+            double_days = 0
+
+            for day in DAYS:
+                count_today = 0
+
+                for period in get_periods(day):
+                    if st.session_state.timetable[section][day][period]["subject"] == subject:
+                        count_today += 1
+
+                if count_today >= 2:
+                    double_days += 1
+
+            if weekly_required >= 6:
+                if double_days != 1:
+                    issues.append(f"{section} - {subject} must have exactly 1 double period")
+            else:
+                if double_days > 0:
+                    issues.append(f"{section} - {subject} cannot have double period")
+
+    return issues
 # SUGGESTION============================================
 def get_free_teachers(day, period):
 
@@ -828,6 +859,7 @@ if menu == "Generate":
         for issue in distribution_issues:
             st.warning(issue)
 
+
         friday_issues = validate_friday_load()
         for issue in friday_issues:
             st.info(issue)
@@ -835,6 +867,21 @@ if menu == "Generate":
         maths_issues = validate_maths_consecutive()
         for issue in maths_issues:
             st.info(issue)
+
+# ===============================
+# HARD RULE: DOUBLE PERIOD
+# ===============================
+
+double_period_issues = validate_double_period_rule()
+
+if double_period_issues:
+    st.error("Double period rule violated. Timetable rejected.")
+
+    for issue in double_period_issues:
+        st.error(issue)
+
+    st.session_state.timetable = {}
+    st.stop()
 
 
 # ==================================================
