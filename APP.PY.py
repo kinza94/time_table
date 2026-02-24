@@ -31,7 +31,7 @@ if not st.session_state.logged_in:
 
     if st.button("Login"):
 
-        if username == "admin" and password == "1234567":
+        if username == "admin" and password == "Kinz@420":
             st.session_state.logged_in = True
             st.session_state.role = "admin"
             st.success("Logged in as Admin")
