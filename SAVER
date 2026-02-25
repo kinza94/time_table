@@ -31,7 +31,7 @@ if not st.session_state.logged_in:
 
     if st.button("Login"):
 
-        if username == "admin" and password == "1234567":
+        if username == "admin" and password == "Kinz@420":
             st.session_state.logged_in = True
             st.session_state.role = "admin"
             st.success("Logged in as Admin")
@@ -1003,24 +1003,51 @@ if st.session_state.teachers and st.session_state.subject_config:
 
                     st.success("Assignment Removed Successfully")
 
-        # ==================================================
-        # ---------------- GENERATE ------------------------
-        # ==================================================
-        if menu == "Generate":
 
-            # 🔹 Generate Button
-            if st.button("Generate Timetable", key="generate_main"):
-                # Create fresh timetable
-                st.session_state.timetable = create_empty_timetable()
+            # ==================================================
+            # ---------------- GENERATE ------------------------
+            # ==================================================
 
-                # Step 1: Give class teacher P1 priority
-                assign_class_teacher_priority()
+            def calculate_fitness():
+                score = 1000
 
-                # Step 2: Fill remaining periods
-                basic_auto_fill()
+                issues = validate_no_three_consecutive()
+                score -= len(issues) * 50
 
-                st.success("Timetable Generated Successfully")
-                save_all_data()
+                dist = validate_teacher_distribution()
+                score -= len(dist) * 20
+
+                friday = validate_friday_load()
+                score -= len(friday) * 10
+
+                return score
+
+
+            if menu == "Generate":
+
+                if st.button("Generate Timetable", key="generate_main"):
+
+                    best_score = -999999
+                    best_timetable = None
+
+                    for _ in range(15):
+
+                        temp_table = create_empty_timetable()
+                        st.session_state.timetable = temp_table
+
+                        assign_class_teacher_priority()
+                        basic_auto_fill()
+
+                        score = calculate_fitness()
+
+                        if score > best_score:
+                            best_score = score
+                            best_timetable = temp_table.copy()
+
+                    st.session_state.timetable = best_timetable
+
+                    st.success("Timetable Generated Successfully")
+                    save_all_data()
             # 🔹 Replacement Section (OUTSIDE button)
             if st.session_state.timetable:
 
@@ -1063,9 +1090,7 @@ if st.session_state.teachers and st.session_state.subject_config:
         for issue in maths_issues:
             st.info(issue)
 
-# ===============================
-# HARD RULE: DOUBLE PERIOD
-# ===============================
+
 
 
 # ==================================================
@@ -1143,6 +1168,22 @@ if menu == "Class View":
     max_load_issues = validate_teacher_max_load()
     for issue in max_load_issues:
         st.error(issue)
+def calculate_fitness():
+    score = 1000   # start high
+
+    # Penalize 3 consecutive
+    issues = validate_no_three_consecutive()
+    score -= len(issues) * 50
+
+    # Penalize imbalance
+    dist = validate_teacher_distribution()
+    score -= len(dist) * 20
+
+    # Penalize Friday overload
+    friday = validate_friday_load()
+    score -= len(friday) * 10
+
+    return score
 # ==================================================
 # ---------------- TEACHER VIEW --------------------
 # ==================================================
