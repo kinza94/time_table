@@ -5,25 +5,18 @@ import json
 from docx import Document
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 import random
 
 import copy
 
+
 conn = sqlite3.connect("school.db", check_same_thread=False)
 c = conn.cursor()
-
-
-def clean_name(x):
-    return str(x).strip().upper()
-
-
 def clean(x):
     return str(x).strip().upper()
-
-
 # ==================================================
 # -------- CONSTRAINT ENGINE GLOBAL STATE ----------
 # ==================================================
@@ -189,18 +182,6 @@ def load_all_data():
         st.session_state.teacher_assignment = data.get("teacher_assignment", {})
         st.session_state.timetable = data.get("timetable", {})
 
-    cleaned = {}
-
-    for t in st.session_state.teachers:
-        cleaned[clean_name(t)] = {}
-
-    st.session_state.teachers = cleaned
-    for sec in st.session_state.timetable:
-        for day in DAYS:
-            for p in get_periods(day):
-                teacher = st.session_state.timetable[sec][day][p]["teacher"]
-                st.session_state.timetable[sec][day][p]["teacher"] = clean_name(teacher)
-
 
 def validate_subject_weekly(section):
     issues = []
@@ -345,6 +326,7 @@ def find_swap_option(section, teacher, subject, day, period):
 # ---------------- CREATE TIMETABLE ----------------
 # ==================================================
 def can_assign(section, subject, teacher, day, period):
+
     periods = get_periods(day)
     idx = periods.index(period)
 
@@ -373,27 +355,26 @@ def can_assign(section, subject, teacher, day, period):
         next_same = False
 
         if idx > 0:
-            prev = periods[idx - 1]
+            prev = periods[idx-1]
             if st.session_state.timetable[section][day][prev]["subject"] == subject:
                 prev_same = True
 
-        if idx < len(periods) - 1:
-            nxt = periods[idx + 1]
+        if idx < len(periods)-1:
+            nxt = periods[idx+1]
             if st.session_state.timetable[section][day][nxt]["subject"] == subject:
                 next_same = True
 
         if (prev_same or next_same):
-            if double_used.get((section, subject), False):
+            if double_used.get((section,subject),False):
                 return False
 
     return True
-
-
 # ==================================================
 # -------- SAFE ASSIGNMENT (STATE UPDATE) ----------
 # ==================================================
 
-def apply_assignment(section, subject, teacher, day, period):
+def apply_assignment(section,subject,teacher,day,period):
+
     st.session_state.timetable[section][day][period]["subject"] = subject
     st.session_state.timetable[section][day][period]["teacher"] = teacher
 
@@ -408,18 +389,18 @@ def apply_assignment(section, subject, teacher, day, period):
         periods = get_periods(day)
 
         if idx > 0:
-            if st.session_state.timetable[section][day][periods[idx - 1]]["subject"] == subject:
-                double_used[(section, subject)] = True
+            if st.session_state.timetable[section][day][periods[idx-1]]["subject"] == subject:
+                double_used[(section,subject)] = True
 
-        if idx < len(periods) - 1:
-            if st.session_state.timetable[section][day][periods[idx + 1]]["subject"] == subject:
-                double_used[(section, subject)] = True
-
+        if idx < len(periods)-1:
+            if st.session_state.timetable[section][day][periods[idx+1]]["subject"] == subject:
+                double_used[(section,subject)] = True
 
 # --------------------------------------------
 # CREATE EMPTY TIMETABLE
 # --------------------------------------------
 def create_empty_timetable():
+
     timetable = {}
 
     # -------- RESET TRACKERS ONCE --------
@@ -434,7 +415,7 @@ def create_empty_timetable():
         for d in DAYS:
             periods = get_periods(d)
             teacher_day_load[t][d] = 0
-            teacher_timeline[t][d] = [0] * len(periods)
+            teacher_timeline[t][d] = [0]*len(periods)
 
     # -------- CREATE TABLE --------
     for section in st.session_state.sections:
@@ -448,19 +429,17 @@ def create_empty_timetable():
                 }
 
     return timetable
-
-
-# -------------
-# ---DOUBLE RULE
+#-------------
+#---DOUBLE RULE
 def is_ix_x_double(subject):
+
     s = subject.upper()
 
     targets = [
-        "PHYSICS", "CHEMISTRY", "COMPUTER IX-X",
+        "PHYSICS","CHEMISTRY","COMPUTER IX-X",
     ]
 
     return any(t in s for t in targets)
-
 
 # TEACHER BUSY CHECK
 # ----------------------------
@@ -518,10 +497,13 @@ def assign_class_teacher_priority():
 
             # Check slot free & teacher not busy
             if (
-                    st.session_state.timetable[section][day]["P1"]["subject"] == ""
-                    and can_assign(section, subject, class_teacher, day, "P1")
-            ):
-                apply_assignment(section, subject, class_teacher, day, "P1")
+                        st.session_state.timetable[section][day]["P1"]["subject"] == ""
+                        and can_assign(section, subject, class_teacher, day, "P1")
+                ):
+                    apply_assignment(section, subject, class_teacher, day, "P1")
+
+
+
 
 
 def calculate_fitness():
@@ -542,10 +524,12 @@ def calculate_fitness():
     return score
 
 
+
 # -------------------------------------------
 # BASIC AUTO FILL ENGINE
 # --------------------------------------------
 def try_swap(section, subject, teacher):
+
     for day in DAYS:
         for period in get_periods(day):
 
@@ -595,11 +579,10 @@ def try_swap(section, subject, teacher):
                             apply_assignment(section, subject, teacher, day, period)
                             apply_assignment(section, other_subject, other_teacher, d2, p2)
 
+
                             return True
 
     return False
-
-
 def basic_auto_fill():
     sections = list(st.session_state.subject_config.keys())
     random.shuffle(sections)
@@ -652,15 +635,16 @@ def basic_auto_fill():
                             continue
 
                         if (
-                                st.session_state.timetable[section][day][period]["subject"] == ""
-                                and can_assign(section, subject, assigned_teacher, day, period)
-                        ):
+                                    st.session_state.timetable[section][day][period]["subject"] == ""
+                                    and can_assign(section, subject, assigned_teacher, day, period)
+                            ):
                             valid_periods.append(period)
 
                     if valid_periods:
                         chosen = random.choice(valid_periods)
 
                         apply_assignment(section, subject, assigned_teacher, day, chosen)
+
 
             # 🔹 Find teacher (still inside subject loop)
             for teacher, sec_data in st.session_state.teacher_assignment.items():
@@ -714,6 +698,8 @@ def basic_auto_fill():
 
                         periods = get_periods(day)
 
+
+
                         # ---- HARD STREAK CHECK ----
 
                         if not can_assign(section, subject, assigned_teacher, day, period):
@@ -743,7 +729,6 @@ def basic_auto_fill():
 
                 subject_day_count[best_day] += 1
                 filled += 1
-
 
 def validate_teacher_distribution():
     issues = []
@@ -904,9 +889,8 @@ def replace_teacher_everywhere(old_teacher, new_teacher):
                     st.session_state.timetable[section][day][period]["teacher"] = new_teacher
 
     save_all_data()
-
-
 def export_all_teachers_word():
+
     file_path = "All_Teachers_Timetable.docx"
 
     doc = Document()
@@ -933,9 +917,8 @@ def export_all_teachers_word():
     doc.save(file_path)
 
     return file_path
-
-
 def export_all_teachers_pdf():
+
     file_path = "All_Teachers_Timetable.pdf"
 
     doc = SimpleDocTemplate(file_path, pagesize=A4)
@@ -956,56 +939,44 @@ def export_all_teachers_pdf():
         bottomMargin=30
     )
 
-    # ---------- COLUMN WIDTH CONTROL ----------
-    page_width = landscape(A4)[0] - 40
-    num_cols = max(len(data[0]), 1)
+    page_width = landscape(A4)[0] - 40  # margins removed
+    num_cols = len(data[0])
 
-    col_width = max(page_width / num_cols, 40)
+    col_width = page_width / num_cols
     col_widths = [col_width] * num_cols
 
-    # ✅ CREATE TABLE (THIS LINE WAS MISSING)
     table = Table(data, colWidths=col_widths, repeatRows=1)
 
-    # ---------- STYLE ----------
     table.setStyle(TableStyle([
-
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1f4e79")),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1f4e79")),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('FONTSIZE', (0,0), (-1,-1), 7),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER')
     ]))
 
     elements.append(table)
-
     doc.build(elements)
 
     return file_path
-
-
 def export_teacher_view_word(teacher):
+
     doc = Document()
     doc.add_heading(f"Teacher Timetable - {teacher}", 0)
 
-    table = doc.add_table(rows=len(ALL_PERIODS) + 1, cols=len(DAYS) + 1)
+    table = doc.add_table(rows=len(ALL_PERIODS)+1, cols=len(DAYS)+1)
     table.style = "Table Grid"
 
     # Header
-    table.cell(0, 0).text = "Period"
+    table.cell(0,0).text = "Period"
 
     for i, day in enumerate(DAYS):
-        table.cell(0, i + 1).text = day
+        table.cell(0, i+1).text = day
 
     # Fill timetable
     for r, period in enumerate(ALL_PERIODS):
 
-        table.cell(r + 1, 0).text = period
+        table.cell(r+1,0).text = period
 
         for c, day in enumerate(DAYS):
 
@@ -1016,19 +987,18 @@ def export_teacher_view_word(teacher):
                 for sec in st.session_state.timetable:
                     entry = st.session_state.timetable[sec][day][period]
 
-                    if clean(entry["teacher"]) == clean(teacher):
+                    if entry["teacher"] == teacher:
                         value = f"{sec}\n{entry['subject']}"
                         break
 
-            table.cell(r + 1, c + 1).text = value
+            table.cell(r+1, c+1).text = value
 
     filename = f"{teacher}_timetable.docx"
     doc.save(filename)
 
     return filename
-
-
 def export_teacher_view_pdf(teacher):
+
     file_path = f"{teacher}_timetable.pdf"
 
     doc = SimpleDocTemplate(file_path, pagesize=A4)
@@ -1042,7 +1012,7 @@ def export_teacher_view_pdf(teacher):
     )
 
     elements.append(title)
-    elements.append(Spacer(1, 20))
+    elements.append(Spacer(1,20))
 
     data = [["Period"] + DAYS]
 
@@ -1070,11 +1040,11 @@ def export_teacher_view_pdf(teacher):
     table = Table(data, repeatRows=1)
 
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1f4e79")),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BACKGROUND',(0,0),(-1,0),colors.HexColor("#1f4e79")),
+        ('TEXTCOLOR',(0,0),(-1,0),colors.white),
+        ('GRID',(0,0),(-1,-1),1,colors.black),
+        ('ALIGN',(0,0),(-1,-1),'CENTER'),
+        ('FONTSIZE',(0,0),(-1,-1),9),
     ]))
 
     elements.append(table)
@@ -1082,81 +1052,47 @@ def export_teacher_view_pdf(teacher):
 
     return file_path
 
+def export_class_timetable_to_word(section):
+    doc = Document()
 
-def export_class_timetable_pdf(section):
+    # TITLE
+    doc.add_heading(f"Class Timetable - {section}", level=1)
 
-    file_path = f"{section}_timetable.pdf"
-
-    doc = SimpleDocTemplate(
-        file_path,
-        pagesize=landscape(A4),
-        rightMargin=40,
-        leftMargin=40,
-        topMargin=40,
-        bottomMargin=40
+    table = doc.add_table(
+        rows=len(ALL_PERIODS) + 1,
+        cols=len(DAYS) + 1
     )
 
-    elements = []
-    styles = getSampleStyleSheet()
+    table.style = "Table Grid"
 
-    # ---------- TITLE ----------
-    title = Paragraph(
-        f"<b>Class Timetable — {section}</b>",
-        styles["Title"]
-    )
+    # HEADER ROW
+    table.cell(0, 0).text = "Period"
 
-    elements.append(title)
-    elements.append(Spacer(1, 20))
+    for i, day in enumerate(DAYS):
+        table.cell(0, i + 1).text = day
 
-    # ---------- TABLE DATA ----------
-    data = [["Period"] + DAYS]
+    # FILL DATA
+    for r, period in enumerate(ALL_PERIODS):
 
-    for period in ALL_PERIODS:
-        row = [period]
+        table.cell(r + 1, 0).text = period
 
-        for day in DAYS:
+        for c, day in enumerate(DAYS):
+
             if period in get_periods(day):
-                cell = st.session_state.timetable[section][day][period]
+                subject = st.session_state.timetable[section][day][period]["subject"]
+                teacher = st.session_state.timetable[section][day][period]["teacher"]
 
-                text = ""
-                if cell["subject"]:
-                    text = f"{cell['subject']}\n({cell['teacher']})"
-            else:
-                text = ""
+                value = f"{subject}\n({teacher})" if subject else ""
 
-            row.append(text)
+                table.cell(r + 1, c + 1).text = value
 
-        data.append(row)
+    filename = f"{section}_Timetable.docx"
+    doc.save(filename)
 
-    # ---------- COLUMN WIDTH ----------
-    page_width = landscape(A4)[0] - 80
-    num_cols = len(data[0])
-    col_width = page_width / num_cols
-    col_widths = [col_width] * num_cols
-
-    # ✅ CREATE TABLE (THIS WAS MISSING)
-    table = Table(data, colWidths=col_widths, repeatRows=1)
-
-    # ---------- STYLE ----------
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1f4e79")),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
-    ]))
-
-    elements.append(table)
-
-    doc.build(elements)
-
-    return file_path
-
+    return filename
 
 def export_all_teachers_pdf():
+
     file_path = "All_Teachers_Timetable.pdf"
 
     doc = SimpleDocTemplate(file_path, pagesize=A4)
@@ -1189,19 +1125,17 @@ def export_all_teachers_pdf():
     table = Table(data, repeatRows=1)
 
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1f4e79")),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER')
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1f4e79")),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('FONTSIZE', (0,0), (-1,-1), 7),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER')
     ]))
 
     elements.append(table)
     doc.build(elements)
 
     return file_path
-
-
 # ==================================================
 # ---------------- SIDEBAR -------------------------
 # ==================================================
@@ -1215,9 +1149,8 @@ else:
         "Navigation",
         ["Class View", "Teacher View", "Analytics"]
     )
-
-
 def build_all_teachers_matrix():
+
     columns = []
 
     # create columns → Monday P1, Monday P2 ...
@@ -1255,8 +1188,6 @@ def build_all_teachers_matrix():
     df = pd.DataFrame(data)
 
     return df
-
-
 # ==================================================
 # ---------------- DASHBOARD -----------------------
 # ==================================================
@@ -1479,60 +1410,58 @@ if menu == "Configuration":
             # ---------------- GENERATE ------------------------
             # ==================================================
 
-
 def validate_no_three_consecutive():
     return []
 
-    if menu == "Generate":
+if menu == "Generate":
 
-        if st.button("Generate Timetable", key="generate_main"):
+    if st.button("Generate Timetable", key="generate_main"):
 
-            best_score = -999999
-            best_timetable = None
+        best_score = -999999
+        best_timetable = None
 
-            for _ in range(15):
-                temp_table = create_empty_timetable()
-                st.session_state.timetable = temp_table
+        for _ in range(15):
 
-                assign_class_teacher_priority()
-                basic_auto_fill()
+            temp_table = create_empty_timetable()
+            st.session_state.timetable = temp_table
 
-                score = calculate_fitness()
+            assign_class_teacher_priority()
+            basic_auto_fill()
 
-                if score > best_score:
-                    best_score = score
-                    best_timetable = copy.deepcopy(temp_table)
+            score = calculate_fitness()
 
-            st.session_state.timetable = best_timetable
-            st.success("Timetable Generated Successfully")
-            save_all_data()
+            if score > best_score:
+                best_score = score
+                best_timetable = copy.deepcopy(temp_table)
 
-        # ✅ Replacement Section MUST stay inside Generate menu
-        if st.session_state.timetable:
+        st.session_state.timetable = best_timetable
 
-            st.subheader("🔄 Replace Teacher")
+        st.success("Timetable Generated Successfully")
+        save_all_data()
+    # 🔹 Replacement Section (OUTSIDE button)
+    if st.session_state.timetable:
+        st.subheader("🔄 Replace Teacher")
 
-            old_teacher = st.selectbox(
-                "Select Teacher to Replace",
-                list(st.session_state.teachers.keys()),
-                key="replace_old"
-            )
+        old_teacher = st.selectbox(
+            "Select Teacher to Replace",
+            list(st.session_state.teachers.keys()),
+            key="replace_old"
+        )
 
-            new_teacher = st.selectbox(
-                "Replace With",
-                list(st.session_state.teachers.keys()),
-                key="replace_new"
-            )
+new_teacher = st.selectbox(
+    "Replace With",
+    list(st.session_state.teachers.keys()),
+    key="replace_new"
+)
 
-            if st.button("Replace Teacher"):
-                replace_teacher_everywhere(old_teacher, new_teacher)
-                save_all_data()
-                st.success(f"{old_teacher} replaced with {new_teacher}")
+if st.button("Replace Teacher"):
+    replace_teacher_everywhere(old_teacher, new_teacher)
+    save_all_data()  # 🔥 IMPORTANT
+    st.success(f"{old_teacher} replaced with {new_teacher}")
 
     # ===============================
     # SOFT CONSTRAINT VALIDATIONS
     # ===============================
-
 
 consecutive_issues = validate_no_three_consecutive()
 for issue in consecutive_issues:
@@ -1571,9 +1500,8 @@ def get_clash_slots():
                         clashes.add((sec, day, period))
 
     return clashes
-
-
 def export_teacher_timetable_pdf(teacher):
+
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
@@ -1626,13 +1554,13 @@ def export_teacher_timetable_pdf(teacher):
     table = Table(data, colWidths=col_widths, repeatRows=1)
 
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1f4e79")),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1f4e79")),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('BACKGROUND', (0,1), (-1,-1), colors.whitesmoke),
     ]))
 
     elements.append(table)
@@ -1640,14 +1568,12 @@ def export_teacher_timetable_pdf(teacher):
 
     return file_path
 
-
 def export_class_timetable_pdf(section):
-
     file_path = f"{section}_timetable.pdf"
 
     doc = SimpleDocTemplate(
         file_path,
-        pagesize=landscape(A4),   # landscape use kar rahe ho width calculation ke liye
+        pagesize=A4,
         rightMargin=40,
         leftMargin=40,
         topMargin=40,
@@ -1676,10 +1602,10 @@ def export_class_timetable_pdf(section):
             if period in get_periods(day):
                 cell = st.session_state.timetable[section][day][period]
 
+                text = ""
                 if cell["subject"]:
                     text = f"{cell['subject']}\n({cell['teacher']})"
-                else:
-                    text = ""
+
             else:
                 text = ""
 
@@ -1687,24 +1613,28 @@ def export_class_timetable_pdf(section):
 
         data.append(row)
 
-    # ---------- COLUMN WIDTH ----------
+    # ---------- COLUMN WIDTH CONTROL ----------
     page_width = landscape(A4)[0] - 40
-    num_cols = len(data[0])
-    col_width = max(page_width / num_cols, 40)
+    num_cols = max(len(data[0]), 1)
+
+    col_width = max(page_width / num_cols, 40)  # minimum width safety
     col_widths = [col_width] * num_cols
-
-    # ✅ CREATE TABLE (THIS WAS MISSING)
-    table = Table(data, colWidths=col_widths, repeatRows=1)
-
     # ---------- STYLE ----------
     table.setStyle(TableStyle([
+
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1f4e79")),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
+
+        ('ROWHEIGHT', (0, 0), (-1, -1), 22),
+
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
+
         ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
     ]))
 
@@ -1817,7 +1747,7 @@ if menu == "Class View":
                                     except Exception as e:
                                         st.warning(f"Format error in {day}-{period}")
                                 subject = subject.strip()
-                                teacher = teacher.strip().upper()
+                                teacher = teacher.strip()
 
                                 st.session_state.timetable[sec][day][period]["subject"] = subject
                                 st.session_state.timetable[sec][day][period]["teacher"] = teacher
@@ -1849,6 +1779,10 @@ if menu == "Class View":
     max_load_issues = validate_teacher_max_load()
     for issue in max_load_issues:
         st.error(issue)
+
+
+
+
 
 # ==================================================
 # ---------------- TEACHER VIEW --------------------
@@ -1882,7 +1816,7 @@ if menu == "Teacher View":
 
                         entry = st.session_state.timetable[sec][day][p]
 
-                        if clean_name(entry["teacher"]) == clean_name(teacher):
+                        if entry["teacher"] == teacher:
                             row.append(f"{sec}\n{entry['subject']}")
                             found = True
                             break
@@ -1929,8 +1863,9 @@ if menu == "Teacher View":
 
                     entry = st.session_state.timetable[sec][day][period]
 
-                    if clean(entry["teacher"]) == clean(teacher):
+                    if entry["teacher"] == teacher:
                         total += 1
+
         st.markdown(f"### 📊 Total Weekly Periods: {total}")
 # ==================================================
 # ---------------- ANALYTICS -----------------------
@@ -1972,6 +1907,7 @@ st.subheader("📋 All Teachers — One Page View")
 
 df_all = build_all_teachers_matrix()
 st.dataframe(df_all, use_container_width=True)
+
 
 col1, col2 = st.columns(2)
 
